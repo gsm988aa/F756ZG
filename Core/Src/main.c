@@ -21,6 +21,7 @@
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -39,6 +40,7 @@ uint8_t i;
 uint32_t ad1, ad2;
 uint32_t ADC_Value[100];
 uint32_t pdx[16];
+uint8_t statesum;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -111,35 +113,32 @@ int main(void)
   MX_USART1_UART_Init();
   MX_DMA_Init();
   MX_ADC1_Init();
+  MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_Value, 100);
   //  HAL_ADC_Start(&hadc1);//启动ADC装换
   //  HAL_ADC_PollForConversion(&hadc1, 10);
 
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET); //A03  底盘车电机  一个触头
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET); //A04 底盘车电机 另一个触头
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET); //A05 接地刀电机 一个触头
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET); //A06 接地刀电机 另一个触头
+  //  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+  //  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3); //A03  底盘车电机  一个触头
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 1000);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); //A04 底盘车电机 另一个触头
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+  //  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
+  //  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+  // HAL_TIM_PWM_Stop();
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3); //A05 接地刀电机 一个触头
+  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 500);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4); //A06 接地刀电机 另一个触头
+  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET); //A07 储能电机
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET); //A09 分闸线圈
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET); //A10 合闸线圈
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET); //A11 继电器合闸
-  pdx[0] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_0);         //A08 储能电机辅助开关  需要和 弹簧未储能按钮 配合
-  pdx[1] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_1);         //A12 手动分闸按钮  A21 遥控分闸出口
-  pdx[2] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2);         //A13 保护分闸按钮
-  pdx[3] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3);         //A14合闸按钮
-  pdx[4] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_4);         //A23底盘车试验位置
-  pdx[5] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_5);         //A24底盘车工作位置
-  pdx[6] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_6);         //A25底盘车遥进按钮手动
-  pdx[7] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_7);         //A26底盘车遥出按钮手动
-  pdx[8] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_8);         //A27弹簧未储能按钮
-  pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);         //A29遥控允许按钮
-  pdx[10] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_10);       //A30接地刀合闸输入
-  pdx[11] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11);       //A31接地刀分闸输入
-  pdx[12] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12);       //A32接地刀机构合闸位置（信号快）
-  pdx[13] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13);       //A33接地刀机构分闸位置（信号快）
-  pdx[14] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_14);       //A34接地刀合闸位置   需要和A32 配合
-  pdx[15] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_15);       //A35接地刀分闸位置
 
   /* USER CODE END 2 */
 
@@ -147,16 +146,36 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    HAL_Delay(5);
+    statesum = 0;
+    pdx[0] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_0);   //A08 储能电机辅助开关 需要和 A27弹簧未储能按钮配合
+    pdx[1] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_1);   //A12 手动分闸按钮  A21 遥控分闸出口
+    pdx[2] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2);   //A13 保护分闸按钮
+    pdx[3] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3);   //A14合闸按钮
+    pdx[4] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_4);   //A23底盘车试验位置
+    pdx[5] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_5);   //A24底盘车工作位置
+    pdx[6] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_6);   //A25底盘车遥进按钮手动
+    pdx[7] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_7);   //A26底盘车遥出按钮手动
+    pdx[8] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_8);   //A27弹簧未储能按钮
+    pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);   //A29遥控允许按钮
+    pdx[10] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_10); //A30接地刀合闸输入
+    pdx[11] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11); //A31接地刀分闸输入
+    pdx[12] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12); //A32接地刀机构合闸位置（信号快)
+    pdx[13] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13); //A33接地刀机构分闸位置（信号快)
+    pdx[14] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_14); //A34接地刀合闸位置   需要和A32 配合
+    pdx[15] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_15); //A35接地刀分闸位置
+    //statesum  = pdx[0] | pdx[1] | pdx[2] | pdx[3] | pdx[4] | pdx[5]| pdx[6]| pdx[7]| pdx[8] | pdx[9] |pdx[10] | pdx[11] | pdx[12] | pdx[13] | pdx[14] | pdx[15];
+    statesum  = pdx[0] | pdx[1] | pdx[2] | pdx[3] | pdx[4] | pdx[5]| pdx[6]| pdx[7]| pdx[8] | pdx[9] |pdx[10] | pdx[11] | pdx[12] | pdx[13] | pdx[14] | pdx[15];
+    
+    // 断路器合闸
 
     //	  HAL_ADC_Start(&hadc1);//启动ADC装换
-    //	  HAL_ADC_PollForConversion(&hadc1, 10);//等待转换完成，第二个参数表示超时时间�????
-    //
+    //	  HAL_ADC_PollForConversion(&hadc1, 10);//等待转换完成，第二个参数表示超时时间�???????
     //	  if(HAL_IS_BIT_SET(HAL_ADC_GetState(&hadc1), HAL_ADC_STATE_REG_EOC)){
-    //	  bufferx = HAL_ADC_GetValue(&hadc1);//读取ADC转换数据，数据为12�????
+    //	  bufferx = HAL_ADC_GetValue(&hadc1);//读取ADC转换数据，数据为12�???????
     //    printf("[\tmain]info:v=%.1fmv\r\n",AD_Value );//打印日志
     //	  }
     //	  HAL_Delay(20);
-    //
     //	  for(i = 0,ad1 =0; i < 100;){
     //	  ad1 += ADC_Value[i++];
     //	  }
