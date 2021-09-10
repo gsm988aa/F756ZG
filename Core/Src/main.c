@@ -39,6 +39,7 @@ uint16_t bufferx;
 uint8_t i;
 uint32_t ad1, ad2;
 uint32_t ADC_Value[100];
+uint32_t pbx[8];
 uint32_t pdx[16];
 uint8_t statesum;
 /* USER CODE END PTD */
@@ -120,18 +121,15 @@ int main(void)
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_Value, 100);
   //  HAL_ADC_Start(&hadc1);//启动ADC装换
   //  HAL_ADC_PollForConversion(&hadc1, 10);
-
-  //  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
-  //  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+  //PB0    PB1
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3); //A03  底盘车电机  一个触头
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 1000);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); //A04 底盘车电机 另一个触头
   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
-  //  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
-  //  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+  //PB8    PB9
   // HAL_TIM_PWM_Stop();
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3); //A05 接地刀电机 一个触头
-  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 500);
+  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4); //A06 接地刀电机 另一个触头
   __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
 
@@ -148,31 +146,31 @@ int main(void)
   {
     HAL_Delay(5);
     statesum = 0;
-    pdx[0] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_0);   //A08 储能电机辅助开关 需要和 A27弹簧未储能按钮配合
-    pdx[1] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_1);   //A12 手动分闸按钮  A21 遥控分闸出口
-    pdx[2] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2);   //A13 保护分闸按钮
-    pdx[3] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3);   //A14合闸按钮
-    pdx[4] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_4);   //A23底盘车试验位置
-    pdx[5] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_5);   //A24底盘车工作位置
-    pdx[6] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_6);   //A25底盘车遥进按钮手动
-    pdx[7] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_7);   //A26底盘车遥出按钮手动
-    pdx[8] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_8);   //A27弹簧未储能按钮
-    pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);   //A29遥控允许按钮
-    pdx[10] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_10); //A30接地刀合闸输入
-    pdx[11] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11); //A31接地刀分闸输入
-    pdx[12] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12); //A32接地刀机构合闸位置（信号快)
-    pdx[13] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13); //A33接地刀机构分闸位置（信号快)
-    pdx[14] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_14); //A34接地刀合闸位置   需要和A32 配合
-    pdx[15] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_15); //A35接地刀分闸位置
+    pdx[0] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_0);   //A08 储能电机辅助按钮 要和 A27弹簧未储能按钮配合       重要4   [按钮  外部中断]
+    pdx[1] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_1);   //A12 手动分闸按钮  A21 遥控分闸出口                   重要1    [按钮  外部中断]
+    pdx[2] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2);   //A13 保护分闸按钮                                    重要2    [按钮  外部中断]
+    pdx[3] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3);   //A14合闸按钮                                         重要5    [按钮  外部中断]
+    pdx[4] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_4);   //A23底盘车试验位置                 {状态}
+    pdx[5] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_5);   //A24底盘车工作位置                 {状态}
+    pdx[7] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_7);   //A26底盘车遥出按钮手动                                重要7    [按钮  外部中断]
+    pdx[6] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_6);   //A25底盘车遥进按钮手动                                重要6    [按钮  外部中断]
+    pdx[8] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_8);   //A27弹簧未储能                     {状态}
+    pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);   //A29遥控允许                       {状态}
+    pdx[10] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_10); //A30接地刀合闸输入按钮                               重要8    [按钮  外部中断]
+    pdx[11] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_11); //A31接地刀分闸输入按钮                               重要3    [按钮  外部中断]
+    pdx[12] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12); //A32接地刀机构合闸位置（信号快)      {状态}
+    pdx[13] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13); //A33接地刀机构分闸位置（信号快)      {状态}
+    pdx[14] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_14); //A34接地刀合闸位置   要和A32 配合    {状态}
+    pdx[15] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_15); //A35接地刀分闸位置                  {状态}
     //statesum  = pdx[0] | pdx[1] | pdx[2] | pdx[3] | pdx[4] | pdx[5]| pdx[6]| pdx[7]| pdx[8] | pdx[9] |pdx[10] | pdx[11] | pdx[12] | pdx[13] | pdx[14] | pdx[15];
-    statesum  = pdx[0] | pdx[1] | pdx[2] | pdx[3] | pdx[4] | pdx[5]| pdx[6]| pdx[7]| pdx[8] | pdx[9] |pdx[10] | pdx[11] | pdx[12] | pdx[13] | pdx[14] | pdx[15];
-    
-    // 断路器合闸
+    //statesum  = pdx[4] | pdx[5] | pdx[8] | pdx[9] | pdx[12] | pdx[13] | pdx[14] | pdx[15];
+
+    // 断路器合�?
 
     //	  HAL_ADC_Start(&hadc1);//启动ADC装换
-    //	  HAL_ADC_PollForConversion(&hadc1, 10);//等待转换完成，第二个参数表示超时时间�???????
+    //	  HAL_ADC_PollForConversion(&hadc1, 10);//等待转换完成，第二个参数表示超时时间
     //	  if(HAL_IS_BIT_SET(HAL_ADC_GetState(&hadc1), HAL_ADC_STATE_REG_EOC)){
-    //	  bufferx = HAL_ADC_GetValue(&hadc1);//读取ADC转换数据，数据为12�???????
+    //	  bufferx = HAL_ADC_GetValue(&hadc1);//读取ADC转换数据，数据为12�?
     //    printf("[\tmain]info:v=%.1fmv\r\n",AD_Value );//打印日志
     //	  }
     //	  HAL_Delay(20);
@@ -247,6 +245,279 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+//PD0 A08 储能电机辅助按钮 要和 A27弹簧未储能按钮配合       重要4   [按钮  外部中断]
+//PD1 A12 手动分闸按钮  A21 遥控分闸出口                   重要1    [按钮  外部中断]
+//PD2 A13 保护分闸按钮                                    重要2    [按钮  外部中断]
+//PD3 A14 合闸按钮                                         重要5    [按钮  外部中断]
+//PD4 A23 底盘车试验位置                 {状态}
+//PD5 A24 底盘车工作位置                 {状态}
+//PD6 A26 底盘车遥出按钮手动                                重要7    [按钮  外部中断]
+//PD7 A25 底盘车遥进按钮手动                                重要6    [按钮  外部中断]
+//PD8 A27 弹簧未储能                     {状态}
+//PD9 A29 遥控允许                       {状态}
+//PD10 A30 接地刀合闸输入按钮                               重要8    [按钮  外部中断]
+//PD11 A31 接地刀分闸输入按钮                               重要3    [按钮  外部中断]
+//PD12 A32 接地刀机构合闸位置（信号快)      {状态}
+//PD13 A33 接地刀机构分闸位置（信号快)      {状态}
+//PD14 A34 接地刀合闸位置   要和A32 配合    {状态}
+//PD15 A35 接地刀分闸位置                  {状态}
+// HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3); //PB0    A03  底盘车电机  一个触头
+// __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 1000);
+// HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); //PB1    A04 底盘车电机 另一个触头
+// __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+
+// // HAL_TIM_PWM_Stop();
+// HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3); //PB8    A05 接地刀电机 一个触头
+// __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 500);
+// HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4); //PB9    A06 接地刀电机 另一个触头
+// __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+
+// HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET); //A07 储能电机
+// HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET); //A09 分闸线圈
+// HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET); //A10 合闸线圈
+// HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET); //A11 继电器合闸
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+  //PD0 A08 储能电机辅助按钮 要和 A27弹簧未储能按钮配合       重要4   [按钮  外部中断]
+  //已捕获PD0 弹簧未储能, 则弹簧储能  需要 捕捉弹簧现在未储能状态PD8 且 远控允许PD9
+  if (GPIO_Pin == GPIO_PIN_0)
+  {
+    pdx[8] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_8);
+    pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);
+    if (pdx[8] && pdx[9])
+    {
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
+      HAL_Delay(1000);
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+      HAL_Delay(5000);
+    }
+  }
+  //PD1 A12 手动分闸按钮  A21 遥控分闸出口                   重要1    [按钮  外部中断]
+  //已捕获PD1 手动分闸,直接分闸 且 !远控允许PD9必须为0 且 底盘车工作位置PD5
+  //由于紧急分闸 不考虑以下情况:  且 PD13 接地刀机构分闸位置（信号快)  且 PD15 接地刀分闸位置 且 PD3 合闸按钮必须为0
+  if (GPIO_Pin == GPIO_PIN_1)
+  {
+    pdx[5] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_5);
+    pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);
+    if (pdx[5] && (!pdx[9]))
+    {
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+      HAL_Delay(1000);
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+      HAL_Delay(5000);
+    }
+  }
+  //PD2 A13 保护分闸按钮                                    重要2    [按钮  外部中断]
+  //已捕获PD1 手动分闸,直接分闸 且 远控允许PD9 且 底盘车工作位置PD5
+  //由于非紧急分闸 考虑以下情况:  且 PD13 接地刀机构分闸位置（信号快)  且 PD15 接地刀分闸位置 且 PD3 !合闸按钮必须为0
+  if (GPIO_Pin == GPIO_PIN_2)
+  {
+    pdx[5] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_5);
+    pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);
+    pdx[13] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13);
+    pdx[15] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_15);
+    pdx[3] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3);
+    if (pdx[5] && pdx[9] && pdx[13] && pdx[15] && (!pdx[3]))
+    {
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+      HAL_Delay(1000);
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+      HAL_Delay(5000);
+    }
+  }
+
+  //PD3 A14合闸按钮                                         重要5    [按钮  外部中断]
+  //已捕获PD3 合闸,直接合闸 且 远控允许PD9 且 底盘车工作位置PD5
+  //由于非紧急合闸 考虑以下情况:  且 PD13 接地刀机构分闸位置（信号快)  且 PD15 接地刀分闸位置 且 PD1 !手动分闸按钮必须为0   且 PD2 !保护分闸按钮必须为0 且 PD8!弹簧未储能必为 0
+  if (GPIO_Pin == GPIO_PIN_3)
+  {
+    pdx[5] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_5);
+    pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);
+    pdx[13] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13);
+    pdx[15] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_15);
+    pdx[1] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_1);
+    pdx[2] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2);
+    pdx[8] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_8);
+    if (pdx[5] && pdx[9] && pdx[13] && pdx[15] && (!pdx[1]) && (!pdx[2]) && (!pdx[8]))
+    {
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET); //A10 合闸线圈
+      HAL_Delay(1000);
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET); //A10 合闸线圈
+      HAL_Delay(5000);
+    }
+  }
+  //PD6 A26底盘车遥出按钮手动                                重要7    [按钮  外部中断]
+  //PB7继电器总开关必须使能
+  //已捕获PD6 底盘车手动推出  电机反转PB0 = 0 , PB1 = 1 且 !远控允许PD9必为0  且 底盘车工作位置PD5 且 PB7继电器总开关必须使能为1 且  !PB6 断路器必须分闸 且 PD13 接地刀机构分闸位置（信号快)  且 PD15 接地刀分闸位置
+  if (GPIO_Pin == GPIO_PIN_6)
+  {
+    pdx[5] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_5);
+    pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);
+    pdx[13] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13);
+    pdx[15] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_15);
+
+    pbx[7] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7);
+    pbx[6] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6);
+    if (pdx[5] && (!pdx[9]) && pbx[7] && (!pbx[6]) && pdx[13] && pdx[15])
+    {
+      HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3); //PB0    A03  底盘车电机  一个触头
+      HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); //PB1    A04 底盘车电机 另一个触头
+                                                // HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
+                                                // HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
+      // PB0   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+      // PB1   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+      HAL_Delay(10);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 1000);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+      HAL_Delay(5000);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 500);
+      HAL_Delay(100);
+      //防抱死
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+      HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
+      HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+      HAL_Delay(3000);
+    }
+  }
+  //PD7 A25底盘车遥进按钮手动                                重要6    [按钮  外部中断]
+  //已捕获PD7 底盘车手动驶入
+  if (GPIO_Pin == GPIO_PIN_7)
+  {
+    pdx[5] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_5);
+    pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);
+    pdx[13] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13);
+    pdx[15] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_15);
+
+    pbx[7] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7);
+    pbx[6] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6);
+    if (pdx[5] && (!pdx[9]) && pbx[7] && (!pbx[6]) && pdx[13] && pdx[15])
+    {
+      HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3); //PB0    A03  底盘车电机  一个触头
+      HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4); //PB1    A04 底盘车电机 另一个触头
+                                                // HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
+                                                // HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
+      // PB0   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+      // PB1   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+      HAL_Delay(10);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 1000);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+      HAL_Delay(5000);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 500);
+      HAL_Delay(100);
+      //防抱死
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_4, 0);
+      __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);
+      // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+      HAL_Delay(3000);
+      HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
+      HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
+    }
+    //PD10 A30接地刀合闸输入按钮                               重要8    [按钮  外部中断]
+    //PB7继电器总开关必须使能
+    //已捕获PD10 接地刀手动合闸  接地刀电机反转PB8 = 1 , PB9 = 0 且 !远控允许PD9必为0  且 底盘车试验位置PD4 且 PB7继电器总开关必须使能为1 且  !PB6 断路器必须分闸 且 PD13 接地刀机构分闸位置（信号快)  且 PD15 接地刀分闸位置
+    if (GPIO_Pin == GPIO_PIN_10)
+    {
+      pdx[4] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_4);
+      pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);
+      pdx[13] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13);
+      pdx[15] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_15);
+
+      pbx[7] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7);
+      pbx[6] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6);
+      if (pdx[4] && (!pdx[9]) && pbx[7] && (!pbx[6]) && pdx[13] && pdx[15])
+      {
+        HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3); //PB8    A05  底盘车电机  一个触头
+        HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4); //PB9    A06 底盘车电机 另一个触头
+                                                  // HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+                                                  // HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_4);
+        // PB0   __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+        // PB1   __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+        HAL_Delay(10);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 1000);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+        HAL_Delay(5000);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 500);
+        HAL_Delay(100);
+        //防抱死
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_4);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+        HAL_Delay(3000);
+
+      }
+    }
+    //PD11 A31接地刀分闸输入按钮                               重要3    [按钮  外部中断]
+    if (GPIO_Pin == GPIO_PIN_11)
+    {
+      //PB7继电器总开关必须使能
+      //已捕获PD10 接地刀手动合闸  接地刀电机反转PB8 = 1 , PB9 = 0 且 !远控允许PD9必为0  且 底盘车试验位置PD4 且 PB7继电器总开关必须使能为1 且  !PB6 断路器必须分闸 且 PD12 接地刀机构合闸位置（信号快)  且 PD14 接地刀合闸位置
+      pdx[4] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_4);
+      pdx[9] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);
+      pdx[12] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_12);
+      pdx[14] = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_14);
+
+      pbx[7] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7);
+      pbx[6] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6);
+
+      if (pdx[4] && (!pdx[9]) && pbx[7] && (!pbx[6]) && pdx[12] && pdx[14])
+      {
+        HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3); //PB8    A05  底盘车电机  一个触头
+        HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4); //PB9    A06 底盘车电机 另一个触头
+                                                  // HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+                                                  // HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_4);
+        // PB0   __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+        // PB1   __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+        HAL_Delay(10);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 1000);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+        HAL_Delay(5000);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 500);
+        HAL_Delay(100);
+        //防抱死
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
+        __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+        // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+        HAL_Delay(3000);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_4);
+      }
+    }
+  }
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+}
 /* USER CODE END 4 */
 
 /**
